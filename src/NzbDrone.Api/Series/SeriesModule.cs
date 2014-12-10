@@ -109,7 +109,11 @@ namespace NzbDrone.Api.Series
 
         private int AddSeries(SeriesResource seriesResource)
         {
-            return GetNewId<Core.Tv.Series>(_seriesService.AddSeries, seriesResource);
+            //TODO: should these come from query parameters instead?
+            var options = Request.Body.InjectTo<AddSeriesOptions>();
+            var series = _seriesService.AddSeries(seriesResource.InjectTo<Core.Tv.Series>(), options);
+
+            return series.Id;
         }
 
         private void UpdateSeries(SeriesResource seriesResource)

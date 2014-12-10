@@ -798,6 +798,7 @@
     <Compile Include="ThingiProvider\ProviderFactory.cs" />
     <Compile Include="ThingiProvider\ProviderRepository.cs" />
     <Compile Include="Tv\Actor.cs" />
+    <Compile Include="Tv\AddSeriesOptions.cs" />
     <Compile Include="Tv\Commands\MoveSeriesCommand.cs" />
     <Compile Include="Tv\Commands\RefreshSeriesCommand.cs" />
     <Compile Include="Tv\Episode.cs" />
@@ -819,6 +820,7 @@
     <Compile Include="Tv\RefreshSeriesService.cs" />
     <Compile Include="Tv\Season.cs" />
     <Compile Include="Tv\Series.cs" />
+    <Compile Include="Tv\SeriesAddedService.cs" />
     <Compile Include="Tv\SeriesEditedService.cs" />
     <Compile Include="Tv\SeriesRepository.cs" />
     <Compile Include="Tv\SeriesService.cs">

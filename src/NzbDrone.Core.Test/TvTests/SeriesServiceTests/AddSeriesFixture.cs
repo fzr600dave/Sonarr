@@ -29,7 +29,7 @@ namespace NzbDrone.Core.Test.TvTests.SeriesServiceTests
                   .Setup(s => s.GetSeriesFolder(fakeSeries, null))
                   .Returns(fakeSeries.Title);
 
-            var series = Subject.AddSeries(fakeSeries);
+            var series = Subject.AddSeries(fakeSeries, new AddSeriesOptions());
 
             series.Path.Should().NotBeNull();
 

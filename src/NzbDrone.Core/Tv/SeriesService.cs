@@ -17,7 +17,7 @@ namespace NzbDrone.Core.Tv
     {
         Series GetSeries(int seriesId);
         List<Series> GetSeries(IEnumerable<int> seriesIds);
-        Series AddSeries(Series newSeries);
+        Series AddSeries(Series newSeries, AddSeriesOptions options);
         Series FindByTvRageId(int tvRageId);
         Series FindByTitle(string title);
         Series FindByTitle(string title, int year);
@@ -63,7 +63,7 @@ namespace NzbDrone.Core.Tv
             return _seriesRepository.Get(seriesIds).ToList();
         }
 
-        public Series AddSeries(Series newSeries)
+        public Series AddSeries(Series newSeries, AddSeriesOptions options)
         {
             Ensure.That(newSeries, () => newSeries).IsNotNull();
 
@@ -81,7 +81,7 @@ namespace NzbDrone.Core.Tv
             newSeries.Added = DateTime.UtcNow;
 
             _seriesRepository.Insert(newSeries);
-            _eventAggregator.PublishEvent(new SeriesAddedEvent(GetSeries(newSeries.Id)));
+            _eventAggregator.PublishEvent(new SeriesAddedEvent(GetSeries(newSeries.Id), options));
 
             return newSeries;
         }
