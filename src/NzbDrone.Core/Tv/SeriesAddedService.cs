@@ -52,12 +52,12 @@ namespace NzbDrone.Core.Tv
                 return;
             }
 
-            else if (type == MonitorEpisodeType.IgnoreMissing)
+            else if (type == MonitorEpisodeType.Missing)
             {
-                UnmonitorEpisodes(episodes.Where(e => !e.HasFile));
+                UnmonitorEpisodes(episodes.Where(e => e.HasFile));
             }
 
-            else if (type == MonitorEpisodeType.FutureOnly)
+            else if (type == MonitorEpisodeType.Future)
             {
                 UnmonitorEpisodes(episodes.Where(e => e.AirDateUtc.HasValue && e.AirDateUtc.Value.Before(DateTime.UtcNow)));
             }
@@ -66,12 +66,6 @@ namespace NzbDrone.Core.Tv
             {
                 //Specials are not monitored by default
                 UnmonitorEpisodes(episodes.Where(e => e.SeasonNumber > 1));
-            }
-
-            else if (type == MonitorEpisodeType.LatestSeason)
-            {
-                var latestSeason = series.Seasons.Select(s => s.SeasonNumber).Max();
-                UnmonitorEpisodes(episodes.Where(e => e.SeasonNumber < latestSeason));
             }
 
             foreach (var season in series.Seasons)

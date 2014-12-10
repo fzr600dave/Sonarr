@@ -9,10 +9,9 @@
     public enum MonitorEpisodeType
     {
         All = 0,
-        IgnoreMissing = 1,
-        FutureOnly = 2,
-        FirstSeason = 3,
-        LatestSeason = 4
+        Missing = 1,
+        Future = 2,
+        FirstSeason = 3
     }
 }
 
