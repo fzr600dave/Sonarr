@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
@@ -10,7 +9,7 @@ namespace NzbDrone.Core.Download
 {
     public interface IFailedDownloadService
     {
-        void MarkAsFailed(int id);
+        void MarkAsFailed(int historyId);
         void Process(TrackedDownload trackedDownload);
     }
 
@@ -18,37 +17,34 @@ namespace NzbDrone.Core.Download
     {
         private readonly IHistoryService _historyService;
         private readonly IEventAggregator _eventAggregator;
-        private readonly Logger _logger;
 
         public FailedDownloadService(IHistoryService historyService,
-                                     IEventAggregator eventAggregator,
-                                     Logger logger)
+                                     IEventAggregator eventAggregator)
         {
             _historyService = historyService;
             _eventAggregator = eventAggregator;
-            _logger = logger;
         }
 
-        public void MarkAsFailed(int id)
+        public void MarkAsFailed(int historyId)
         {
-            var history = _historyService.Get(id);
+            var history = _historyService.Get(historyId);
 
-            var downloadClientId = history.DownloadId;
-            if (downloadClientId.IsNullOrWhiteSpace())
+            var downloadId = history.DownloadId;
+            if (downloadId.IsNullOrWhiteSpace())
             {
                 PublishDownloadFailedEvent(new List<History.History> { history }, "Manually marked as failed");
             }
             else
             {
-                var grabbedHistory = _historyService.Grabbed().Where(h => h.DownloadId == downloadClientId).ToList();
+                var grabbedHistory = _historyService.Find(downloadId, HistoryEventType.Grabbed).ToList();
                 PublishDownloadFailedEvent(grabbedHistory, "Manually marked as failed");
             }
         }
 
         public void Process(TrackedDownload trackedDownload)
         {
-            var grabbedItems = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId)
-                .Where(c => c.EventType == HistoryEventType.Grabbed).ToList();
+            var grabbedItems = _historyService.Find(trackedDownload.DownloadItem.DownloadId, HistoryEventType.Grabbed)
+                .ToList();
 
             if (grabbedItems.Empty())
             {
@@ -61,8 +57,7 @@ namespace NzbDrone.Core.Download
                 trackedDownload.State = TrackedDownloadStage.DownloadFailed;
                 PublishDownloadFailedEvent(grabbedItems, "Encrypted download detected");
             }
-
-            if (trackedDownload.DownloadItem.Status == DownloadItemStatus.Failed)
+            else if (trackedDownload.DownloadItem.Status == DownloadItemStatus.Failed)
             {
                 trackedDownload.State = TrackedDownloadStage.DownloadFailed;
                 PublishDownloadFailedEvent(grabbedItems, trackedDownload.DownloadItem.Message);

@@ -22,16 +22,13 @@ namespace NzbDrone.Core.History
         QualityModel GetBestQualityInHistory(Profile profile, int episodeId);
         PagingSpec<History> Paged(PagingSpec<History> pagingSpec);
         List<History> BetweenDates(DateTime startDate, DateTime endDate, HistoryEventType eventType);
-        List<History> Failed();
         List<History> Grabbed();
         List<History> Imported();
         History MostRecentForEpisode(int episodeId);
         History MostRecentForDownloadId(string downloadId);
-        History Get(int id);
+        History Get(int historyId);
         List<History> FindBySourceTitle(string sourceTitle);
-        List<History> FindByDownloadId(string downloadId);
-
-        void UpdateHistory(Int32 historyId, string downloadId, Dictionary<string, string> data);
+        List<History> Find(string downloadId, HistoryEventType eventType);
     }
 
     public class HistoryService : IHistoryService,
@@ -89,9 +86,9 @@ namespace NzbDrone.Core.History
             return _historyRepository.MostRecentForDownloadId(downloadId);
         }
 
-        public History Get(int id)
+        public History Get(int historyId)
         {
-            return _historyRepository.Get(id);
+            return _historyRepository.Get(historyId);
         }
 
         public List<History> FindBySourceTitle(string sourceTitle)
@@ -99,9 +96,9 @@ namespace NzbDrone.Core.History
             return _historyRepository.FindBySourceTitle(sourceTitle);
         }
 
-        public List<History> FindByDownloadId(string downloadId)
+        public List<History> Find(string downloadId, HistoryEventType eventType)
         {
-            return _historyRepository.FindByDownloadId(downloadId);
+            return _historyRepository.FindByDownloadId(downloadId).Where(c => c.EventType == eventType).ToList();
         }
 
         public void Purge()
@@ -120,14 +117,6 @@ namespace NzbDrone.Core.History
             return _historyRepository.GetBestQualityInHistory(episodeId)
                 .OrderByDescending(q => q, comparer)
                 .FirstOrDefault();
-        }
-
-        public void UpdateHistory(Int32 historyId, string downloadId, Dictionary<string, string> data)
-        {
-            var history = _historyRepository.Get(historyId);
-            history.DownloadId = downloadId;
-            history.Data = data;
-            _historyRepository.Update(history);
         }
 
         public void Handle(EpisodeGrabbedEvent message)

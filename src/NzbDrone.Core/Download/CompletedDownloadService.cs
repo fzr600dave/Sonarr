@@ -1,14 +1,13 @@
-﻿using System;
+﻿using System.IO;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
-using NzbDrone.Core.MediaFiles;
-using NzbDrone.Core.MediaFiles.EpisodeImport;
-using System.IO;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
+using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.MediaFiles.EpisodeImport;
 using NzbDrone.Core.Messaging.Events;
 
 namespace NzbDrone.Core.Download
@@ -24,19 +23,16 @@ namespace NzbDrone.Core.Download
         private readonly IEventAggregator _eventAggregator;
         private readonly IHistoryService _historyService;
         private readonly IDownloadedEpisodesImportService _downloadedEpisodesImportService;
-        private readonly Logger _logger;
 
         public CompletedDownloadService(IConfigService configService,
                                         IEventAggregator eventAggregator,
                                         IHistoryService historyService,
-                                        IDownloadedEpisodesImportService downloadedEpisodesImportService,
-                                        Logger logger)
+                                        IDownloadedEpisodesImportService downloadedEpisodesImportService)
         {
             _configService = configService;
             _eventAggregator = eventAggregator;
             _historyService = historyService;
             _downloadedEpisodesImportService = downloadedEpisodesImportService;
-            _logger = logger;
         }
 
         public void Process(TrackedDownload trackedDownload)
@@ -71,8 +67,6 @@ namespace NzbDrone.Core.Download
 
             Import(trackedDownload);
         }
-
-
 
         private void Import(TrackedDownload trackedDownload)
         {

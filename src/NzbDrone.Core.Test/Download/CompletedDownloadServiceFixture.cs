@@ -23,7 +23,6 @@ namespace NzbDrone.Core.Test.Download
     {
         private TrackedDownload _trackedDownload;
 
-
         [SetUp]
         public void Setup()
         {
@@ -33,13 +32,11 @@ namespace NzbDrone.Core.Test.Download
                                                     .With(h => h.Title = "Drone.S01E01.HDTV")
                                                     .Build();
 
-
             var remoteEpisode = new RemoteEpisode
                                 {
                                     Series = new Series(),
                                     Episodes = new List<Episode> { new Episode { Id = 1 } }
                                 };
-
 
             _trackedDownload = Builder<TrackedDownload>.CreateNew()
                     .With(c => c.State = TrackedDownloadStage.Downloading)
@@ -97,7 +94,6 @@ namespace NzbDrone.Core.Test.Download
         {
             _trackedDownload.DownloadItem.Category = "tv";
             GivenNoGrabbedHistory();
-
             GivenSuccessfulImport();
 
             Subject.Process(_trackedDownload);
@@ -136,7 +132,6 @@ namespace NzbDrone.Core.Test.Download
         [Test]
         public void should_not_mark_as_imported_if_all_files_were_rejected()
         {
-
             Mocker.GetMock<IDownloadedEpisodesImportService>()
                   .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()))
                   .Returns(new List<ImportResult>
@@ -194,7 +189,6 @@ namespace NzbDrone.Core.Test.Download
                 .Verify(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()), Times.Never());
 
             AssertNoCompletedDownload();
-
         }
 
         private void AssertNoCompletedDownload()
@@ -203,7 +197,6 @@ namespace NzbDrone.Core.Test.Download
                   .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Never());
 
             _trackedDownload.State.Should().NotBe(TrackedDownloadStage.Imported);
-
         }
 
         private void AssertCompletedDownload()
@@ -212,7 +205,6 @@ namespace NzbDrone.Core.Test.Download
                 .Verify(v => v.ProcessPath(_trackedDownload.DownloadItem.OutputPath.FullPath, _trackedDownload.DownloadItem), Times.Once());
             
             _trackedDownload.State.Should().Be(TrackedDownloadStage.Imported);
-
         }
     }
 }
