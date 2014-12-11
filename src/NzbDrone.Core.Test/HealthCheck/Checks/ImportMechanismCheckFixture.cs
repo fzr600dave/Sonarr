@@ -8,6 +8,7 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.HealthCheck.Checks;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.TrackedDownloads;
 
 namespace NzbDrone.Core.Test.HealthCheck.Checks
 {
@@ -33,15 +34,15 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
 
             _completed = Builder<TrackedDownload>.CreateListOfSize(1)
                 .All()
-                .With(v => v.State == TrackedDownloadState.Downloading)
+                .With(v => v.State == TrackedDownloadStage.Downloading)
                 .With(v => v.DownloadItem = new DownloadClientItem())
                 .With(v => v.DownloadItem.Status = DownloadItemStatus.Completed)
                 .With(v => v.DownloadItem.OutputPath = new OsPath(@"C:\Test\DropFolder\myfile.mkv".AsOsAgnostic()))
                 .Build();
 
-            Mocker.GetMock<IDownloadTrackingService>()
-                .Setup(v => v.GetCompletedDownloads())
-                .Returns(_completed.ToArray());
+            Mocker.GetMock<ITrackedDownloadService>()
+                .Setup(v => v.GetActive())
+                .Returns(_completed.ToList());
         }
 
         private void GivenDroneFactoryFolder(bool exists = false)

@@ -5,6 +5,7 @@ using NzbDrone.Core.Download;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Api.Series;
 using NzbDrone.Api.Episodes;
+using NzbDrone.Core.Download.TrackedDownloads;
 
 namespace NzbDrone.Api.Queue
 {

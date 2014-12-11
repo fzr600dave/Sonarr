@@ -6,6 +6,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Messaging.Events;
@@ -18,7 +19,7 @@ using NzbDrone.Test.Common;
 namespace NzbDrone.Core.Test.Download
 {
     [TestFixture]
-    public class FailedDownloadServiceFixture : CoreTest<DownloadTrackingService>
+    public class FailedDownloadServiceFixture : CoreTest<DownloadMonitoringService>
     {
         private List<DownloadClientItem> _completed;
         private List<DownloadClientItem> _failed;
@@ -49,7 +50,7 @@ namespace NzbDrone.Core.Test.Download
 
             Mocker.GetMock<IProvideDownloadClient>()
                   .Setup(c => c.GetDownloadClients())
-                  .Returns( new IDownloadClient[] { Mocker.GetMock<IDownloadClient>().Object });
+                  .Returns(new IDownloadClient[] { Mocker.GetMock<IDownloadClient>().Object });
 
             Mocker.GetMock<IDownloadClient>()
                   .SetupGet(c => c.Definition)
@@ -109,16 +110,6 @@ namespace NzbDrone.Core.Test.Download
                   .Returns(_failed);
         }
 
-        private void GivenGracePeriod(int hours)
-        {
-            Mocker.GetMock<IConfigService>().SetupGet(s => s.BlacklistGracePeriod).Returns(hours);
-        }
-
-        private void GivenRetryLimit(int count, int interval = 5)
-        {
-            Mocker.GetMock<IConfigService>().SetupGet(s => s.BlacklistRetryLimit).Returns(count);
-            Mocker.GetMock<IConfigService>().SetupGet(s => s.BlacklistRetryInterval).Returns(interval);
-        }
 
         private void VerifyNoFailedDownloads()
         {
@@ -200,8 +191,8 @@ namespace NzbDrone.Core.Test.Download
                                                   .Build()
                                                   .ToList();
 
-            historyGrabbed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyGrabbed.First().Data.Add("downloadClientId", null);
+            historyGrabbed.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            historyGrabbed.First().DownloadId = null;
 
             GivenGrabbedHistory(historyGrabbed);
             GivenNoFailedHistory();
@@ -221,8 +212,8 @@ namespace NzbDrone.Core.Test.Download
                                                   .Build()
                                                   .ToList();
 
-            historyGrabbed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyGrabbed.First().Data.Add("downloadClientId", _failed.First().DownloadClientId);
+            historyGrabbed.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            historyGrabbed.First().DownloadId = _failed.First().DownloadId;
 
             GivenGrabbedHistory(historyGrabbed);
 
@@ -230,9 +221,9 @@ namespace NzbDrone.Core.Test.Download
                                                   .Build()
                                                   .ToList();
 
-            historyFailed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyFailed.First().Data.Add("downloadClientId", null);
-            
+            historyFailed.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            historyFailed.First().DownloadId = null;
+
             GivenFailedHistory(historyFailed);
 
             Subject.Execute(new CheckForFinishedDownloadCommand());
@@ -244,16 +235,16 @@ namespace NzbDrone.Core.Test.Download
         public void should_not_process_if_already_added_to_history_as_failed()
         {
             GivenFailedDownloadClientHistory();
-            
+
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
-            
+
             GivenGrabbedHistory(history);
             GivenFailedHistory(history);
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _failed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _failed.First().DownloadId;
 
             Subject.Execute(new CheckForFinishedDownloadCommand());
 
@@ -272,8 +263,8 @@ namespace NzbDrone.Core.Test.Download
             GivenGrabbedHistory(history);
             GivenNoFailedHistory();
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _failed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _failed.First().DownloadId;
 
             Subject.Execute(new CheckForFinishedDownloadCommand());
 
@@ -294,8 +285,8 @@ namespace NzbDrone.Core.Test.Download
 
             history.ForEach(h =>
             {
-                h.Data.Add("downloadClient", "SabnzbdClient");
-                h.Data.Add("downloadClientId", _failed.First().DownloadClientId);
+                h.Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+                h.DownloadId = _failed.First().DownloadId;
             });
 
             Subject.Execute(new CheckForFinishedDownloadCommand());
@@ -324,8 +315,8 @@ namespace NzbDrone.Core.Test.Download
                                                   .Build()
                                                   .ToList();
 
-            historyGrabbed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyGrabbed.First().Data.Add("downloadClientId", _failed.First().DownloadClientId);
+            historyGrabbed.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            historyGrabbed.First().DownloadId = _failed.First().DownloadId;
 
             GivenGrabbedHistory(historyGrabbed);
             GivenNoFailedHistory();
@@ -345,8 +336,8 @@ namespace NzbDrone.Core.Test.Download
                                                   .Build()
                                                   .ToList();
 
-            historyGrabbed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyGrabbed.First().Data.Add("downloadClientId", _failed.First().DownloadClientId);
+            historyGrabbed.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            historyGrabbed.First().DownloadId = _failed.First().DownloadId;
             historyGrabbed.First().Data.Add("ageHours", "48");
 
             GivenGrabbedHistory(historyGrabbed);
@@ -356,79 +347,6 @@ namespace NzbDrone.Core.Test.Download
 
             VerifyFailedDownloads();
             VerifyNoRetryDownload();
-        }
-
-        [Test]
-        public void should_not_retry_if_already_failed()
-        {
-            GivenFailedDownloadClientHistory();
-
-            var historyGrabbed = Builder<History.History>.CreateListOfSize(1)
-                                                  .Build()
-                                                  .ToList();
-
-            historyGrabbed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyGrabbed.First().Data.Add("downloadClientId", _failed.First().DownloadClientId);
-            historyGrabbed.First().Data.Add("ageHours", "1");
-
-            GivenGrabbedHistory(historyGrabbed);
-            GivenFailedHistory(historyGrabbed);
-            GivenGracePeriod(6);
-            GivenRetryLimit(1);
-
-            Subject.Execute(new CheckForFinishedDownloadCommand());
-
-            VerifyNoFailedDownloads();
-            VerifyNoRetryDownload();
-        }
-
-        [Test]
-        public void should_process_if_retry_count_is_greater_than_grace_period()
-        {
-            GivenFailedDownloadClientHistory();
-
-            var historyGrabbed = Builder<History.History>.CreateListOfSize(1)
-                                                  .Build()
-                                                  .ToList();
-
-            historyGrabbed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyGrabbed.First().Data.Add("downloadClientId", _failed.First().DownloadClientId);
-            historyGrabbed.First().Data.Add("ageHours", "48");
-
-            GivenGrabbedHistory(historyGrabbed);
-            GivenNoFailedHistory();
-            GivenGracePeriod(6);
-
-            Subject.Execute(new CheckForFinishedDownloadCommand());
-
-            VerifyFailedDownloads();
-            VerifyNoRetryDownload();
-        }
-
-        [Test]
-        public void should_not_process_if_age_is_less_than_grace_period()
-        {
-            GivenFailedDownloadClientHistory();
-
-            var historyGrabbed = Builder<History.History>.CreateListOfSize(1)
-                                                  .Build()
-                                                  .ToList();
-
-            historyGrabbed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyGrabbed.First().Data.Add("downloadClientId", _failed.First().DownloadClientId);
-            historyGrabbed.First().Data.Add("ageHours", "1");
-
-            GivenGrabbedHistory(historyGrabbed);
-            GivenNoFailedHistory();
-            GivenGracePeriod(6);
-            GivenRetryLimit(1);
-
-            Subject.Execute(new CheckForFinishedDownloadCommand());
-
-            VerifyNoFailedDownloads();
-            VerifyNoRetryDownload();
-
-            ExceptionVerification.IgnoreWarns();
         }
 
         [Test]
@@ -437,8 +355,8 @@ namespace NzbDrone.Core.Test.Download
             var historyFailed = Builder<History.History>.CreateListOfSize(2)
                 .All()
                 .With(v => v.EventType == HistoryEventType.Grabbed)
-                .Do(v => v.Data.Add("downloadClient", "SabnzbdClient"))
-                .Do(v => v.Data.Add("downloadClientId", "test"))
+                .Do(v => v.Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient"))
+                .Do(v => v.DownloadId = "test")
                 .Build()
                 .ToList();
 
@@ -448,7 +366,7 @@ namespace NzbDrone.Core.Test.Download
                 .Setup(s => s.Get(It.IsAny<Int32>()))
                 .Returns<Int32>(i => historyFailed.FirstOrDefault(v => v.Id == i));
 
-            Subject.MarkAsFailed(1);
+            //Subject.MarkAsFailed(1);
 
             VerifyFailedDownloads(2);
         }

@@ -62,12 +62,12 @@ namespace NzbDrone.Core.Jobs
 
         public void Handle(ApplicationStartedEvent message)
         {
-            _cancellationTokenSource = new CancellationTokenSource();
+        /*    _cancellationTokenSource = new CancellationTokenSource();
             Timer.Interval = 1000 * 30;
             Timer.Elapsed += (o, args) => Task.Factory.StartNew(ExecuteCommands, _cancellationTokenSource.Token)
                 .LogExceptions();
 
-            Timer.Start();
+            Timer.Start();*/
         }
 
         public void Handle(ApplicationShutdownRequested message)

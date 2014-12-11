@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Tv;
@@ -8,6 +9,8 @@ namespace NzbDrone.Core.History
 {
     public class History : ModelBase
     {
+        public const string DOWNLOAD_CLIENT = "downloadClient";
+
         public History()
         {
             Data = new Dictionary<string, string>();
@@ -22,6 +25,9 @@ namespace NzbDrone.Core.History
         public Series Series { get; set; }
         public HistoryEventType EventType { get; set; }
         public Dictionary<string, string> Data { get; set; }
+
+        public string DownloadId { get; set; }
+
     }
 
     public enum HistoryEventType

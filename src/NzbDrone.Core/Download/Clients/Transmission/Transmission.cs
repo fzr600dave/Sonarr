@@ -102,7 +102,7 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                 }
 
                 var item = new DownloadClientItem();
-                item.DownloadClientId = torrent.HashString.ToUpper();
+                item.DownloadId = torrent.HashString.ToUpper();
                 item.Category = Settings.TvCategory;
                 item.Title = torrent.Name;
 

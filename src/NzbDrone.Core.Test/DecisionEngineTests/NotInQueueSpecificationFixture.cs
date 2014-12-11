@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.DecisionEngine.Specifications;
-using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles;
 using NzbDrone.Core.Qualities;
@@ -53,12 +54,12 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
 
         private void GivenEmptyQueue()
         {
-            Mocker.GetMock<IDownloadTrackingService>()
-                .Setup(s => s.GetQueuedDownloads())
-                .Returns(new TrackedDownload[0]);
+            Mocker.GetMock<ITrackedDownloadService>()
+                .Setup(s => s.GetActive())
+                .Returns(new List<TrackedDownload>());
         }
 
-        private void GivenQueue(IEnumerable<RemoteEpisode> remoteEpisodes, TrackedDownloadState state = TrackedDownloadState.Downloading)
+        private void GivenQueue(IEnumerable<RemoteEpisode> remoteEpisodes, TrackedDownloadStage state = TrackedDownloadStage.Downloading)
         {
             var queue = new List<TrackedDownload>();
 
@@ -71,9 +72,9 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
                 });
             }
 
-            Mocker.GetMock<IDownloadTrackingService>()
-                .Setup(s => s.GetQueuedDownloads())
-                .Returns(queue.ToArray());
+            Mocker.GetMock<ITrackedDownloadService>()
+                .Setup(s => s.GetActive())
+                .Returns(queue.ToList());
         }
 
         [Test]
@@ -107,7 +108,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
                                                                                        })
                                                       .Build();
 
-            GivenQueue(new List<RemoteEpisode> { remoteEpisode }, TrackedDownloadState.DownloadFailed);
+            GivenQueue(new List<RemoteEpisode> { remoteEpisode }, TrackedDownloadStage.DownloadFailed);
 
             Subject.IsSatisfiedBy(_remoteEpisode, null).Accepted.Should().BeTrue();
         }

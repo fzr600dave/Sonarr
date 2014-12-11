@@ -150,27 +150,6 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("RemoveFailedDownloads", value); }
         }
 
-        public Int32 BlacklistGracePeriod
-        {
-            get { return GetValueInt("BlacklistGracePeriod", 2); }
-
-            set { SetValue("BlacklistGracePeriod", value); }
-        }
-
-        public Int32 BlacklistRetryInterval
-        {
-            get { return GetValueInt("BlacklistRetryInterval", 60); }
-
-            set { SetValue("BlacklistRetryInterval", value); }
-        }
-
-        public Int32 BlacklistRetryLimit
-        {
-            get { return GetValueInt("BlacklistRetryLimit", 1); }
-
-            set { SetValue("BlacklistRetryLimit", value); }
-        }
-
         public Boolean CreateEmptySeriesFolders
         {
             get { return GetValueBoolean("CreateEmptySeriesFolders", false); }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Generic;
-using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.TrackedDownloads;
 
 namespace NzbDrone.Core.Queue
 {
@@ -13,16 +13,16 @@ namespace NzbDrone.Core.Queue
 
     public class QueueService : IQueueService
     {
-        private readonly IDownloadTrackingService _downloadTrackingService;
+        private readonly ITrackedDownloadService _trackedDownloadService;
 
-        public QueueService(IDownloadTrackingService downloadTrackingService)
+        public QueueService(ITrackedDownloadService trackedDownloadService)
         {
-            _downloadTrackingService = downloadTrackingService;
+            _trackedDownloadService = trackedDownloadService;
         }
 
         public List<Queue> GetQueue()
         {
-            var queueItems = _downloadTrackingService.GetQueuedDownloads()
+            var queueItems = _trackedDownloadService.GetActive()
                 .OrderBy(v => v.DownloadItem.RemainingTime)
                 .ToList();
 
@@ -44,7 +44,7 @@ namespace NzbDrone.Core.Queue
                 {
                     var queue = new Queue
                                 {
-                                    Id = episode.Id ^ (trackedDownload.DownloadItem.DownloadClientId.GetHashCode() << 16),
+                                    Id = episode.Id ^ (trackedDownload.DownloadItem.DownloadId.GetHashCode() << 16),
                                     Series = trackedDownload.RemoteEpisode.Series,
                                     Episode = episode,
                                     Quality = trackedDownload.RemoteEpisode.ParsedEpisodeInfo.Quality,
@@ -53,9 +53,9 @@ namespace NzbDrone.Core.Queue
                                     Sizeleft = trackedDownload.DownloadItem.RemainingSize,
                                     Timeleft = trackedDownload.DownloadItem.RemainingTime,
                                     Status = trackedDownload.DownloadItem.Status.ToString(),
-                                    RemoteEpisode = trackedDownload.RemoteEpisode,
                                     TrackedDownloadStatus = trackedDownload.Status.ToString(),
-                                    StatusMessages = trackedDownload.StatusMessages,
+                                    StatusMessages = trackedDownload.StatusMessages.ToList(),
+                                    RemoteEpisode = trackedDownload.RemoteEpisode,
                                     TrackingId = trackedDownload.TrackingId
                                 };
 

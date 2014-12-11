@@ -25,9 +25,6 @@ namespace NzbDrone.Core.Configuration
         Boolean EnableFailedDownloadHandling { get; set; }
         Boolean AutoRedownloadFailed { get; set; }
         Boolean RemoveFailedDownloads { get; set; }
-        Int32 BlacklistGracePeriod { get; set; }
-        Int32 BlacklistRetryInterval { get; set; }
-        Int32 BlacklistRetryLimit { get; set; }
 
         //Media Management
         Boolean AutoUnmonitorPreviouslyDownloadedEpisodes { get; set; }

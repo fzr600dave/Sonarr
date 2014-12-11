@@ -26,9 +26,12 @@ namespace NzbDrone.Core.History
         List<History> Grabbed();
         List<History> Imported();
         History MostRecentForEpisode(int episodeId);
+        History MostRecentForDownloadId(string downloadId);
         History Get(int id);
         List<History> FindBySourceTitle(string sourceTitle);
-        void UpdateHistoryData(Int32 historyId, Dictionary<String, String> data);
+        List<History> FindByDownloadId(string downloadId);
+
+        void UpdateHistory(Int32 historyId, string downloadId, Dictionary<string, string> data);
     }
 
     public class HistoryService : IHistoryService,
@@ -81,6 +84,11 @@ namespace NzbDrone.Core.History
             return _historyRepository.MostRecentForEpisode(episodeId);
         }
 
+        public History MostRecentForDownloadId(string downloadId)
+        {
+            return _historyRepository.MostRecentForDownloadId(downloadId);
+        }
+
         public History Get(int id)
         {
             return _historyRepository.Get(id);
@@ -89,6 +97,11 @@ namespace NzbDrone.Core.History
         public List<History> FindBySourceTitle(string sourceTitle)
         {
             return _historyRepository.FindBySourceTitle(sourceTitle);
+        }
+
+        public List<History> FindByDownloadId(string downloadId)
+        {
+            return _historyRepository.FindByDownloadId(downloadId);
         }
 
         public void Purge()
@@ -109,9 +122,10 @@ namespace NzbDrone.Core.History
                 .FirstOrDefault();
         }
 
-        public void UpdateHistoryData(Int32 historyId, Dictionary<String, String> data)
+        public void UpdateHistory(Int32 historyId, string downloadId, Dictionary<string, string> data)
         {
             var history = _historyRepository.Get(historyId);
+            history.DownloadId = downloadId;
             history.Data = data;
             _historyRepository.Update(history);
         }
@@ -128,6 +142,7 @@ namespace NzbDrone.Core.History
                     SourceTitle = message.Episode.Release.Title,
                     SeriesId = episode.SeriesId,
                     EpisodeId = episode.Id,
+                    DownloadId = message.DownloadId
                 };
 
                 history.Data.Add("Indexer", message.Episode.Release.Indexer);
@@ -137,11 +152,6 @@ namespace NzbDrone.Core.History
                 history.Data.Add("AgeHours", message.Episode.Release.AgeHours.ToString());
                 history.Data.Add("PublishedDate", message.Episode.Release.PublishDate.ToString("s") + "Z");
                 history.Data.Add("DownloadClient", message.DownloadClient);
-
-                if (!String.IsNullOrWhiteSpace(message.DownloadClientId))
-                {
-                    history.Data.Add("DownloadClientId", message.DownloadClientId);
-                }
 
                 if (!message.Episode.ParsedEpisodeInfo.ReleaseHash.IsNullOrWhiteSpace())
                 {
@@ -168,7 +178,8 @@ namespace NzbDrone.Core.History
                         Quality = message.EpisodeInfo.Quality,
                         SourceTitle = message.ImportedEpisode.SceneName ?? Path.GetFileNameWithoutExtension(message.EpisodeInfo.Path),
                         SeriesId = message.ImportedEpisode.SeriesId,
-                        EpisodeId = episode.Id
+                        EpisodeId = episode.Id,
+                        DownloadId = message.DownloadId
                     };
 
                 //Won't have a value since we publish this event before saving to DB.
@@ -176,7 +187,6 @@ namespace NzbDrone.Core.History
                 history.Data.Add("DroppedPath", message.EpisodeInfo.Path);
                 history.Data.Add("ImportedPath", Path.Combine(message.EpisodeInfo.Series.Path, message.ImportedEpisode.RelativePath));
                 history.Data.Add("DownloadClient", message.DownloadClient);
-                history.Data.Add("DownloadClientId", message.DownloadClientId);
 
                 _historyRepository.Insert(history);
             }
@@ -194,10 +204,10 @@ namespace NzbDrone.Core.History
                     SourceTitle = message.SourceTitle,
                     SeriesId = message.SeriesId,
                     EpisodeId = episodeId,
+                    DownloadId = message.DownloadId
                 };
 
                 history.Data.Add("DownloadClient", message.DownloadClient);
-                history.Data.Add("DownloadClientId", message.DownloadClientId);
                 history.Data.Add("Message", message.Message);
 
                 _historyRepository.Insert(history);

@@ -231,6 +231,7 @@
     <Compile Include="Datastore\Migration\067_add_added_to_series.cs" />
     <Compile Include="Datastore\Migration\069_quality_proper.cs" />
     <Compile Include="Datastore\Migration\071_unknown_quality_in_profile.cs" />
+    <Compile Include="Datastore\Migration\072_history_grabid.cs" />
     <Compile Include="Datastore\Migration\070_delay_profile.cs" />
     <Compile Include="Datastore\Migration\Framework\MigrationContext.cs" />
     <Compile Include="Datastore\Migration\Framework\MigrationController.cs" />
@@ -269,7 +270,6 @@
     <Compile Include="DecisionEngine\Specifications\NotSampleSpecification.cs" />
     <Compile Include="DecisionEngine\Specifications\QualityAllowedByProfileSpecification.cs" />
     <Compile Include="DecisionEngine\Specifications\RetentionSpecification.cs" />
-    <Compile Include="DecisionEngine\Specifications\RetrySpecification.cs" />
     <Compile Include="DecisionEngine\Specifications\RssSync\DelaySpecification.cs" />
     <Compile Include="DecisionEngine\Specifications\RssSync\HistorySpecification.cs" />
     <Compile Include="DecisionEngine\Specifications\RssSync\MonitoredEpisodeSpecification.cs" />
@@ -352,7 +352,11 @@
     <Compile Include="Download\Clients\uTorrent\UTorrentTorrent.cs" />
     <Compile Include="Download\Clients\uTorrent\UTorrentTorrentStatus.cs" />
     <Compile Include="Download\CompletedDownloadService.cs" />
-    <Compile Include="Download\TrackedDownloadStatusMessage.cs" />
+    <Compile Include="Download\DownloadEventHub.cs" />
+    <Compile Include="Download\TrackedDownloads\DownloadMonitoringService.cs" />
+    <Compile Include="Download\TrackedDownloads\TrackedDownload.cs" />
+    <Compile Include="Download\TrackedDownloads\TrackedDownloadService.cs" />
+    <Compile Include="Download\TrackedDownloads\TrackedDownloadStatusMessage.cs" />
     <Compile Include="Download\UsenetClientBase.cs" />
     <Compile Include="Download\TorrentClientBase.cs" />
     <Compile Include="Download\DownloadClientBase.cs" />
@@ -366,7 +370,6 @@
     <Compile Include="Download\DownloadFailedEvent.cs" />
     <Compile Include="Download\DownloadItemStatus.cs" />
     <Compile Include="Download\DownloadService.cs" />
-    <Compile Include="Download\DownloadTrackingService.cs" />
     <Compile Include="Download\EpisodeGrabbedEvent.cs" />
     <Compile Include="Download\FailedDownloadService.cs" />
     <Compile Include="Download\IDownloadClient.cs" />
@@ -377,7 +380,6 @@
     <Compile Include="Download\ProcessDownloadDecisions.cs" />
     <Compile Include="Download\ProcessedDecisions.cs" />
     <Compile Include="Download\RedownloadFailedDownloadService.cs" />
-    <Compile Include="Download\TrackedDownload.cs" />
     <Compile Include="Exceptions\BadRequestException.cs" />
     <Compile Include="Exceptions\DownstreamException.cs" />
     <Compile Include="Exceptions\NzbDroneClientException.cs" />
@@ -908,6 +910,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>

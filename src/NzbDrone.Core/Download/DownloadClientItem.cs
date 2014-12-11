@@ -1,12 +1,14 @@
 ﻿using System;
+using System.Diagnostics;
 using NzbDrone.Common.Disk;
 
 namespace NzbDrone.Core.Download
 {
+    [DebuggerDisplay("{DownloadClient}:{Title}")]
     public class DownloadClientItem
     {
         public String DownloadClient { get; set; }
-        public String DownloadClientId { get; set; }
+        public String DownloadId { get; set; }
         public String Category { get; set; }
         public String Title { get; set; }
 

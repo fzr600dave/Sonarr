@@ -1,87 +1,85 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.IO;
 using FizzWare.NBuilder;
+using FluentAssertions;
 using Moq;
+using NLog;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
-using NzbDrone.Core.IndexerSearch.Definitions;
-using NzbDrone.Core.Parser;
-using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
+using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
 using NzbDrone.Test.Common;
-using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.Test.Download
 {
     [TestFixture]
-    public class CompletedDownloadServiceFixture : CoreTest<DownloadTrackingService>
+    public class CompletedDownloadServiceFixture : CoreTest<CompletedDownloadService>
     {
-        private List<DownloadClientItem> _completed;
+        private DownloadClientItem _completed;
+        private List<History.History> _grabbedHistory;
+        private List<History.History> _importedHistory;
+        private TrackedDownload _trackedDownload;
+
 
         [SetUp]
         public void Setup()
         {
-            _completed = Builder<DownloadClientItem>.CreateListOfSize(1)
-                                                    .All()
+            _grabbedHistory = null;
+            _importedHistory = null;
+
+            _completed = Builder<DownloadClientItem>.CreateNew()
                                                     .With(h => h.Status = DownloadItemStatus.Completed)
                                                     .With(h => h.OutputPath = new OsPath(@"C:\DropFolder\MyDownload".AsOsAgnostic()))
                                                     .With(h => h.Title = "Drone.S01E01.HDTV")
-                                                    .Build()
-                                                    .ToList();
+                                                    .Build();
+
 
             var remoteEpisode = new RemoteEpisode
                                 {
                                     Series = new Series(),
-                                    Episodes = new List<Episode> {new Episode {Id = 1}}
+                                    Episodes = new List<Episode> { new Episode { Id = 1 } }
                                 };
-            
-            Mocker.GetMock<IProvideDownloadClient>()
-                  .Setup(c => c.GetDownloadClients())
-                  .Returns( new IDownloadClient[] { Mocker.GetMock<IDownloadClient>().Object });
+
+
+            _trackedDownload = Builder<TrackedDownload>.CreateNew()
+                    .With(c => c.State = TrackedDownloadStage.Downloading)
+                    .With(c => c.DownloadItem = _completed)
+                    .With(c => c.RemoteEpisode = remoteEpisode)
+                    .Build();
+
 
             Mocker.GetMock<IDownloadClient>()
-                  .SetupGet(c => c.Definition)
-                  .Returns(new DownloadClientDefinition { Id = 1, Name = "testClient" });
+              .SetupGet(c => c.Definition)
+              .Returns(new DownloadClientDefinition { Id = 1, Name = "testClient" });
 
-            Mocker.GetMock<IConfigService>()
-                  .SetupGet(s => s.EnableCompletedDownloadHandling)
-                  .Returns(true);
-
-            Mocker.GetMock<IConfigService>()
-                  .SetupGet(s => s.RemoveCompletedDownloads)
-                  .Returns(true);
+            Mocker.GetMock<IProvideDownloadClient>()
+                  .Setup(c => c.Get(It.IsAny<int>()))
+                  .Returns(Mocker.GetMock<IDownloadClient>().Object);
 
             Mocker.GetMock<IHistoryService>()
                   .Setup(s => s.Failed())
                   .Returns(new List<History.History>());
 
-            Mocker.GetMock<IParsingService>()
-                  .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<Int32>(), It.IsAny<IEnumerable<Int32>>()))
-                  .Returns(remoteEpisode);
-
-            Mocker.GetMock<IParsingService>()
-                  .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<Int32>(), (SearchCriteriaBase)null))
-                  .Returns(remoteEpisode);
-            
-            Mocker.SetConstant<ICompletedDownloadService>(Mocker.Resolve<CompletedDownloadService>());
         }
 
         private void GivenNoGrabbedHistory()
         {
-            Mocker.GetMock<IHistoryService>()
-                  .Setup(s => s.Grabbed())
-                  .Returns(new List<History.History>());
+            GivenGrabbedHistory(new List<History.History>());
         }
 
         private void GivenGrabbedHistory(List<History.History> history)
         {
+            _grabbedHistory = history;
+
+
             Mocker.GetMock<IHistoryService>()
                   .Setup(s => s.Grabbed())
                   .Returns(history);
@@ -89,33 +87,30 @@ namespace NzbDrone.Core.Test.Download
 
         private void GivenNoImportedHistory()
         {
-            Mocker.GetMock<IHistoryService>()
-                  .Setup(s => s.Imported())
-                  .Returns(new List<History.History>());
+            GivenImportedHistory(new List<History.History>());
         }
 
         private void GivenImportedHistory(List<History.History> importedHistory)
         {
+            _importedHistory = importedHistory;
+
+
             Mocker.GetMock<IHistoryService>()
                   .Setup(s => s.Imported())
                   .Returns(importedHistory);
         }
 
-        private void GivenCompletedDownloadClientHistory(bool hasStorage = true)
+        private void GivenRemoveConfig(bool remove)
         {
-            Mocker.GetMock<IDownloadClient>()
-                  .Setup(s => s.GetItems())
-                  .Returns(_completed);
-            
-            Mocker.GetMock<IDiskProvider>()
-                .Setup(c => c.FolderExists(It.IsAny<string>()))
-                .Returns(hasStorage);
+            Mocker.GetMock<IConfigService>()
+             .SetupGet(s => s.RemoveCompletedDownloads)
+             .Returns(remove);
         }
 
-        private void GivenCompletedImport()
+        private void GivenSuccessfulImport()
         {
             Mocker.GetMock<IDownloadedEpisodesImportService>()
-                .Setup(v => v.ProcessFolder(It.IsAny<DirectoryInfo>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>()))
+                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()))
                 .Returns(new List<ImportResult>
                     {
                         new ImportResult(new ImportDecision(new LocalEpisode() { Path = @"C:\TestPath\Droned.S01E01.mkv" }))
@@ -125,167 +120,99 @@ namespace NzbDrone.Core.Test.Download
         private void GivenFailedImport()
         {
             Mocker.GetMock<IDownloadedEpisodesImportService>()
-                .Setup(v => v.ProcessFolder(It.IsAny<DirectoryInfo>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>()))
+                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()))
                 .Returns(new List<ImportResult>() 
                     {
                         new ImportResult(new ImportDecision(new LocalEpisode() { Path = @"C:\TestPath\Droned.S01E01.mkv" }, "Test Failure")) 
                     });
         }
+     
 
-        private void VerifyNoImports()
+        [Test]
+        public void should_not_process_if_matching_history_is_not_found_and_no_category_specified()
         {
-            Mocker.GetMock<IDownloadedEpisodesImportService>()
-                .Verify(v => v.ProcessFolder(It.IsAny<DirectoryInfo>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>()), Times.Never());
-        }
+            _completed.Category = null;
 
-        private void VerifyImports()
-        {
-            Mocker.GetMock<IDownloadedEpisodesImportService>()
-                .Verify(v => v.ProcessFolder(It.IsAny<DirectoryInfo>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>()), Times.Once());
+            GivenNoGrabbedHistory();
+            GivenNoImportedHistory();
+
+
+
+            Subject.Process(_trackedDownload);
+
+            AssertNoImports();
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
         public void should_process_if_matching_history_is_not_found_but_category_specified()
         {
-            _completed.First().Category = "tv";
+            _completed.Category = "tv";
 
-            GivenCompletedDownloadClientHistory();
             GivenNoGrabbedHistory();
             GivenNoImportedHistory();
-            GivenCompletedImport();
+            GivenSuccessfulImport();
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            VerifyImports();
+            AssertImports();
         }
 
-        [Test]
-        public void should_not_process_if_matching_history_is_not_found_and_no_category_specified()
-        {
-            _completed.First().Category = null;
-
-            GivenCompletedDownloadClientHistory();
-            GivenNoGrabbedHistory();
-            GivenNoImportedHistory();
-
-            Subject.Execute(new CheckForFinishedDownloadCommand());
-
-            VerifyNoImports();
-            ExceptionVerification.ExpectedWarns(1);
-        }
-
-        [Test]
-        public void should_not_process_if_grabbed_history_contains_null_downloadclient_id()
-        {
-            _completed.First().Category = null;
-
-            GivenCompletedDownloadClientHistory();
-
-            var historyGrabbed = Builder<History.History>.CreateListOfSize(1)
-                                                  .Build()
-                                                  .ToList();
-
-            historyGrabbed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyGrabbed.First().Data.Add("downloadClientId", null);
-
-            GivenGrabbedHistory(historyGrabbed);
-            GivenNoImportedHistory();
-            GivenFailedImport();
-
-            Subject.Execute(new CheckForFinishedDownloadCommand());
-
-            VerifyNoImports();
-            ExceptionVerification.ExpectedWarns(1);
-        }
-
-        [Test]
-        public void should_process_if_failed_history_contains_null_downloadclient_id()
-        {
-            GivenCompletedDownloadClientHistory();
-
-            var historyGrabbed = Builder<History.History>.CreateListOfSize(1)
-                                                  .Build()
-                                                  .ToList();
-
-            historyGrabbed.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyGrabbed.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
-
-            GivenGrabbedHistory(historyGrabbed);
-
-            var historyImported = Builder<History.History>.CreateListOfSize(1)
-                                                  .Build()
-                                                  .ToList();
-
-            historyImported.First().Data.Add("downloadClient", "SabnzbdClient");
-            historyImported.First().Data.Add("downloadClientId", null);
-            
-            GivenImportedHistory(historyImported);
-            GivenCompletedImport();
-
-            Subject.Execute(new CheckForFinishedDownloadCommand());
-
-            VerifyImports();
-        }
 
         [Test]
         public void should_not_process_if_already_added_to_history_as_imported()
         {
-            GivenCompletedDownloadClientHistory();
-            
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
-            
+
             GivenGrabbedHistory(history);
             GivenImportedHistory(history);
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            VerifyNoImports();
+            AssertNoImports();
         }
 
         [Test]
         public void should_process_if_not_already_in_imported_history()
         {
-            GivenCompletedDownloadClientHistory();
-
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
 
             GivenGrabbedHistory(history);
             GivenNoImportedHistory();
-            GivenCompletedImport();
+            GivenSuccessfulImport();
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            VerifyImports();
+            AssertImports();
         }
 
         [Test]
         public void should_not_process_if_storage_directory_does_not_exist()
         {
-            GivenCompletedDownloadClientHistory(false);
-            
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
 
             GivenGrabbedHistory(history);
             GivenNoImportedHistory();
+            GivenSuccessfulImport();
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            VerifyNoImports();
+            AssertNoImports();
 
             ExceptionVerification.IgnoreErrors();
         }
@@ -293,7 +220,6 @@ namespace NzbDrone.Core.Test.Download
         [Test]
         public void should_not_process_if_storage_directory_in_drone_factory()
         {
-            GivenCompletedDownloadClientHistory(true);
 
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
@@ -301,17 +227,43 @@ namespace NzbDrone.Core.Test.Download
 
             GivenGrabbedHistory(history);
             GivenNoImportedHistory();
+            GivenSuccessfulImport();
 
             Mocker.GetMock<IConfigService>()
                   .SetupGet(v => v.DownloadedEpisodesFolder)
                   .Returns(@"C:\DropFolder".AsOsAgnostic());
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            VerifyNoImports();
+            AssertNoImports();
+
+            ExceptionVerification.IgnoreWarns();
+        }
+
+
+        [Test]
+        public void should_not_process_if_output_path_is_empty()
+        {
+
+            var history = Builder<History.History>.CreateListOfSize(1)
+                                                  .Build()
+                                                  .ToList();
+
+            GivenGrabbedHistory(history);
+            GivenNoImportedHistory();
+            GivenSuccessfulImport();
+
+            _trackedDownload.DownloadItem.OutputPath = new OsPath();
+
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
+
+            Subject.Process(_trackedDownload);
+
+            AssertNoImports();
 
             ExceptionVerification.IgnoreWarns();
         }
@@ -319,10 +271,8 @@ namespace NzbDrone.Core.Test.Download
         [Test]
         public void should_process_as_already_imported_if_drone_factory_import_history_exists()
         {
-            GivenCompletedDownloadClientHistory(false);
-
-            _completed.Clear();
-            _completed.AddRange(Builder<DownloadClientItem>.CreateListOfSize(2)
+            var completed = new List<DownloadClientItem>();
+            completed.AddRange(Builder<DownloadClientItem>.CreateListOfSize(2)
                                              .All()
                                              .With(h => h.Status = DownloadItemStatus.Completed)
                                              .With(h => h.OutputPath = new OsPath(@"C:\DropFolder\MyDownload".AsOsAgnostic()))
@@ -331,12 +281,12 @@ namespace NzbDrone.Core.Test.Download
 
             var grabbedHistory = Builder<History.History>.CreateListOfSize(2)
                                                   .All()
-                                                  .With(d => d.Data["downloadClient"] = "SabnzbdClient")
+                                                  .With(d => d.Data[History.History.DOWNLOAD_CLIENT] = "SabnzbdClient")
                                                   .TheFirst(1)
-                                                  .With(d => d.Data["downloadClientId"] = _completed.First().DownloadClientId)
+                                                  .With(d => d.DownloadId = _completed.DownloadId)
                                                   .With(d => d.SourceTitle = "Droned.S01E01.720p-LAZY")
                                                   .TheLast(1)
-                                                  .With(d => d.Data["downloadClientId"] = _completed.Last().DownloadClientId)
+                                                  .With(d => d.DownloadId = completed.Last().DownloadId)
                                                   .With(d => d.SourceTitle = "Droned.S01E01.Proper.720p-LAZY")
                                                   .Build()
                                                   .ToList();
@@ -354,86 +304,65 @@ namespace NzbDrone.Core.Test.Download
             GivenGrabbedHistory(grabbedHistory);
             GivenImportedHistory(importedHistory);
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            VerifyNoImports();
+            AssertNoImports();
 
             Mocker.GetMock<IHistoryService>()
-                .Verify(v => v.UpdateHistoryData(It.IsAny<int>(), It.IsAny<Dictionary<String, String>>()), Times.Exactly(2));
-        }
-
-        [Test]
-        public void should_not_remove_if_config_disabled()
-        {
-            GivenCompletedDownloadClientHistory();
-
-            var history = Builder<History.History>.CreateListOfSize(1)
-                                                  .Build()
-                                                  .ToList();
-
-            GivenGrabbedHistory(history);
-            GivenNoImportedHistory();
-            GivenCompletedImport();
-
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
-
-            Mocker.GetMock<IConfigService>()
-                  .SetupGet(s => s.RemoveCompletedDownloads)
-                  .Returns(false);
-
-            Subject.Execute(new CheckForFinishedDownloadCommand());
-
-            Mocker.GetMock<IDiskProvider>()
-                .Verify(c => c.DeleteFolder(It.IsAny<string>(), true), Times.Never());
+                .Verify(v => v.UpdateHistory(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<Dictionary<String, String>>()), Times.Once());
         }
 
         [Test]
         public void should_not_remove_while_readonly()
         {
-            GivenCompletedDownloadClientHistory();
-
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
-
             GivenGrabbedHistory(history);
             GivenNoImportedHistory();
-            GivenCompletedImport();
+            GivenSuccessfulImport();
+            GivenRemoveConfig(true);
 
-            _completed.First().IsReadOnly = true;
+            _completed.IsReadOnly = true;
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
-            
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Mocker.GetMock<IDiskProvider>()
-                .Verify(c => c.DeleteFolder(It.IsAny<string>(), true), Times.Never());
+            Subject.Process(_trackedDownload);
+
+            AssertNotRemoved();
         }
+
 
         [Test]
         public void should_not_remove_if_imported_failed()
         {
-            GivenCompletedDownloadClientHistory();
-
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
 
+            Mocker.GetMock<IDownloadedEpisodesImportService>()
+          .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()))
+          .Returns(new List<ImportResult>
+                           {
+                               new ImportResult(
+                                   new ImportDecision(new LocalEpisode() {Path = @"C:\TestPath\Droned.S01E01.mkv"}, "Rejected!"),
+                                   "Test Failure")
+                           });
+
             GivenGrabbedHistory(history);
             GivenNoImportedHistory();
             GivenFailedImport();
+            GivenRemoveConfig(true);
 
-            _completed.First().IsReadOnly = true;
+            _completed.IsReadOnly = false;
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            Mocker.GetMock<IDiskProvider>()
-                .Verify(c => c.DeleteFolder(It.IsAny<string>(), true), Times.Never());
+            AssertNotRemoved();
 
             ExceptionVerification.IgnoreErrors();
         }
@@ -441,30 +370,26 @@ namespace NzbDrone.Core.Test.Download
         [Test]
         public void should_remove_if_imported()
         {
-            GivenCompletedDownloadClientHistory();
-
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
 
             GivenGrabbedHistory(history);
             GivenNoImportedHistory();
-            GivenCompletedImport();
+            GivenSuccessfulImport();
+            GivenRemoveConfig(true);
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            Mocker.GetMock<IDiskProvider>()
-                .Verify(c => c.DeleteFolder(It.IsAny<string>(), true), Times.Once());
+            AssertRemoved();
         }
 
         [Test]
         public void should_not_mark_as_imported_if_all_files_were_rejected()
         {
-            GivenCompletedDownloadClientHistory();
-
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
@@ -473,7 +398,7 @@ namespace NzbDrone.Core.Test.Download
             GivenNoImportedHistory();
 
             Mocker.GetMock<IDownloadedEpisodesImportService>()
-                  .Setup(v => v.ProcessFolder(It.IsAny<DirectoryInfo>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(
@@ -481,13 +406,13 @@ namespace NzbDrone.Core.Test.Download
                                    "Test Failure")
                            });
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            Mocker.GetMock<IDiskProvider>()
-                .Verify(c => c.DeleteFolder(It.IsAny<string>(), true), Times.Never());
+
+            AssertNoImports();
 
             ExceptionVerification.ExpectedErrors(1);
         }
@@ -495,8 +420,6 @@ namespace NzbDrone.Core.Test.Download
         [Test]
         public void should_not_mark_as_imported_if_all_files_were_skipped()
         {
-            GivenCompletedDownloadClientHistory();
-
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
@@ -505,7 +428,7 @@ namespace NzbDrone.Core.Test.Download
             GivenNoImportedHistory();
 
             Mocker.GetMock<IDownloadedEpisodesImportService>()
-                  .Setup(v => v.ProcessFolder(It.IsAny<DirectoryInfo>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(
@@ -513,13 +436,13 @@ namespace NzbDrone.Core.Test.Download
                                    "Test Failure")
                            });
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            Mocker.GetMock<IDiskProvider>()
-                .Verify(c => c.DeleteFolder(It.IsAny<string>(), true), Times.Never());
+
+            AssertNoImports();
 
             ExceptionVerification.ExpectedErrors(1);
         }
@@ -527,8 +450,6 @@ namespace NzbDrone.Core.Test.Download
         [Test]
         public void should_not_mark_as_imported_if_some_files_were_skipped()
         {
-            GivenCompletedDownloadClientHistory();
-
             var history = Builder<History.History>.CreateListOfSize(1)
                                                   .Build()
                                                   .ToList();
@@ -537,7 +458,7 @@ namespace NzbDrone.Core.Test.Download
             GivenNoImportedHistory();
 
             Mocker.GetMock<IDownloadedEpisodesImportService>()
-                  .Setup(v => v.ProcessFolder(It.IsAny<DirectoryInfo>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(new ImportDecision(new LocalEpisode() {Path = @"C:\TestPath\Droned.S01E01.mkv"})),
@@ -546,15 +467,42 @@ namespace NzbDrone.Core.Test.Download
                                    "Test Failure")
                            });
 
-            history.First().Data.Add("downloadClient", "SabnzbdClient");
-            history.First().Data.Add("downloadClientId", _completed.First().DownloadClientId);
+            history.First().Data.Add(History.History.DOWNLOAD_CLIENT, "SabnzbdClient");
+            history.First().DownloadId = _completed.DownloadId;
 
-            Subject.Execute(new CheckForFinishedDownloadCommand());
+            Subject.Process(_trackedDownload);
 
-            Mocker.GetMock<IDiskProvider>()
-                .Verify(c => c.DeleteFolder(It.IsAny<string>(), true), Times.Never());
+            AssertNoImports();
 
             ExceptionVerification.ExpectedErrors(1);
+        }
+
+
+        private void AssertNotRemoved()
+        {
+            Mocker.GetMock<IProvideDownloadClient>().Verify(c => c.Get(It.IsAny<int>()), Times.Never());
+        }
+
+
+        private void AssertRemoved()
+        {
+            Mocker.GetMock<IProvideDownloadClient>().Verify(c => c.Get(It.IsAny<int>()), Times.Once());
+            Mocker.GetMock<IDownloadClient>().Verify(c => c.RemoveItem(_trackedDownload.DownloadItem.DownloadId), Times.Once());
+        }
+
+
+        private void AssertNoImports()
+        {
+            Mocker.GetMock<IDownloadedEpisodesImportService>()
+                .Verify(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()), Times.Never());
+        }
+
+        private void AssertImports()
+        {
+            _trackedDownload.State.Should().Be(TrackedDownloadStage.Imported);
+
+            Mocker.GetMock<IDownloadedEpisodesImportService>()
+                .Verify(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<DownloadClientItem>()), Times.Once());
         }
     }
 }
