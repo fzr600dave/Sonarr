@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
@@ -43,34 +42,25 @@ namespace NzbDrone.Core.Tv
             }
         }
         
-        private void SetEpisodeMonitoredStatus(Series series, List<Episode> episodes, MonitorEpisodeType type)
+        private void SetEpisodeMonitoredStatus(Series series, List<Episode> episodes, AddSeriesOptions options)
         {
-            _logger.Info("[{0}] Setting episode monitored status. {1}", series.Title, type.ToString());
+            _logger.Debug("[{0}] Setting episode monitored status.", series.Title);
 
-            if (type == MonitorEpisodeType.All)
+            if (options.IgnoreEpisodesWithFiles)
             {
-                return;
-            }
-
-            else if (type == MonitorEpisodeType.Missing)
-            {
+                _logger.Debug("Ignoring Episodes with Files");
                 UnmonitorEpisodes(episodes.Where(e => e.HasFile));
             }
 
-            else if (type == MonitorEpisodeType.Future)
+            if (options.IgnoreEpisodesWithoutFiles)
             {
-                UnmonitorEpisodes(episodes.Where(e => e.AirDateUtc.HasValue && e.AirDateUtc.Value.Before(DateTime.UtcNow)));
-            }
-
-            else if (type == MonitorEpisodeType.FirstSeason)
-            {
-                //Specials are not monitored by default
-                UnmonitorEpisodes(episodes.Where(e => e.SeasonNumber > 1));
+                _logger.Debug("Ignoring Episodes without Files");
+                UnmonitorEpisodes(episodes.Where(e => !e.HasFile && e.AirDateUtc.HasValue && e.AirDateUtc.Value.Before(DateTime.UtcNow)));
             }
 
             foreach (var season in series.Seasons)
             {
-                if (episodes.All(e => !e.Monitored))
+                if (episodes.Where(e => e.SeasonNumber == season.SeasonNumber).All(e => !e.Monitored) || options.IgnoreSeasons.Contains(season.SeasonNumber))
                 {
                     season.Monitored = false;
                 }
@@ -132,7 +122,7 @@ namespace NzbDrone.Core.Tv
             }
             
             var episodes = _episodeService.GetEpisodeBySeries(message.Series.Id);
-            SetEpisodeMonitoredStatus(message.Series, episodes, options.MonitorEpisodes);
+            SetEpisodeMonitoredStatus(message.Series, episodes, options);
             
             if (options.SearchForMissingEpisodes)
             {

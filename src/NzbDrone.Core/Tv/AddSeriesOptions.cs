@@ -1,9 +1,18 @@
-﻿namespace NzbDrone.Core.Tv
+﻿using System.Collections.Generic;
+
+namespace NzbDrone.Core.Tv
 {
     public class AddSeriesOptions
     {
         public bool SearchForMissingEpisodes { get; set; }
-        public MonitorEpisodeType MonitorEpisodes { get; set; }
+        public bool IgnoreEpisodesWithFiles { get; set; }
+        public bool IgnoreEpisodesWithoutFiles { get; set; }
+        public List<int> IgnoreSeasons { get; set; }
+
+        public AddSeriesOptions()
+        {
+            IgnoreSeasons = new List<int>();
+        }
     }
 
     public enum MonitorEpisodeType
