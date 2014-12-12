@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using NzbDrone.Api.REST;
-using NzbDrone.Core.Download;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Api.Series;
 using NzbDrone.Api.Episodes;

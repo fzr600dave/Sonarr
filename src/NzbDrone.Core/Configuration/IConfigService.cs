@@ -22,7 +22,6 @@ namespace NzbDrone.Core.Configuration
         Boolean EnableCompletedDownloadHandling { get; set; }
         Boolean RemoveCompletedDownloads { get; set; }
 
-        Boolean EnableFailedDownloadHandling { get; set; }
         Boolean AutoRedownloadFailed { get; set; }
         Boolean RemoveFailedDownloads { get; set; }
 

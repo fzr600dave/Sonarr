@@ -128,7 +128,6 @@ namespace NzbDrone.Core.Download.Clients.Sabnzbd
 
                     TotalSize = sabHistoryItem.Size,
                     RemainingSize = 0,
-                    DownloadTime = TimeSpan.FromSeconds(sabHistoryItem.DownloadTime),
                     RemainingTime = TimeSpan.Zero,
 
                     Message = sabHistoryItem.FailMessage

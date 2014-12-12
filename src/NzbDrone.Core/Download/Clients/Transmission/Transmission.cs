@@ -107,7 +107,6 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                 item.Title = torrent.Name;
 
                 item.DownloadClient = Definition.Name;
-                item.DownloadTime = TimeSpan.FromSeconds(torrent.SecondsDownloading);
 
                 item.OutputPath = outputPath + torrent.Name;
                 item.RemainingSize = torrent.LeftUntilDone;

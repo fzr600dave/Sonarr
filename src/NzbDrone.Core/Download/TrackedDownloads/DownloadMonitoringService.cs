@@ -13,8 +13,8 @@ using NzbDrone.Core.Queue;
 namespace NzbDrone.Core.Download.TrackedDownloads
 {
     public class DownloadMonitoringService : IExecute<CheckForFinishedDownloadCommand>,
-                                           IHandleAsync<ApplicationStartedEvent>,
-                                           IHandleAsync<EpisodeGrabbedEvent>
+                                             IHandleAsync<ApplicationStartedEvent>,
+                                             IHandleAsync<EpisodeGrabbedEvent>
     {
         private readonly IProvideDownloadClient _downloadClientProvider;
         private readonly IEventAggregator _eventAggregator;
@@ -45,11 +45,6 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
         private void Refresh()
         {
-            if (!_configService.EnableFailedDownloadHandling && !_configService.EnableFailedDownloadHandling)
-            {
-                return;
-            }
-
             var downloadClients = _downloadClientProvider.GetDownloadClients();
 
             foreach (var downloadClient in downloadClients)
@@ -85,10 +80,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
         private void ProcessTrackedDownload(TrackedDownload trackedDownload)
         {
-            if (trackedDownload.Protocol == DownloadProtocol.Usenet && _configService.EnableFailedDownloadHandling)
-            {
-                _failedDownloadService.Process(trackedDownload);
-            }
+            _failedDownloadService.Process(trackedDownload);
 
             if (_configService.EnableCompletedDownloadHandling)
             {

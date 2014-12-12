@@ -108,7 +108,6 @@ namespace NzbDrone.Core.Download.Clients.Deluge
                 item.Category = Settings.TvCategory;
 
                 item.DownloadClient = Definition.Name;
-                item.DownloadTime = TimeSpan.FromSeconds(torrent.SecondsDownloading);
 
                 var outputPath = _remotePathMappingService.RemapRemoteToLocal(Settings.Host, new OsPath(torrent.DownloadPath));
                 item.OutputPath = outputPath + torrent.Name;

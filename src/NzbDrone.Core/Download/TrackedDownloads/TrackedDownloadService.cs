@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
-using NzbDrone.Core.Configuration;
 using NzbDrone.Core.DataAugmentation.Scene;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Messaging.Events;
@@ -23,19 +22,16 @@ namespace NzbDrone.Core.Download.TrackedDownloads
     {
         private readonly IParsingService _parsingService;
         private readonly IHistoryService _historyService;
-        private readonly IConfigService _configService;
         private readonly Logger _logger;
         private readonly ICached<TrackedDownload> _cache;
 
         public TrackedDownloadService(IParsingService parsingService,
             ICacheManager cacheManager,
             IHistoryService historyService,
-            IConfigService configService,
             Logger logger)
         {
             _parsingService = parsingService;
             _historyService = historyService;
-            _configService = configService;
             _cache = cacheManager.GetCache<TrackedDownload>(GetType());
             _logger = logger;
         }
@@ -87,6 +83,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 return null;
             }
 
+            _cache.Set(downloadItem.DownloadId, trackedDownload, TimeSpan.FromMinutes(1));
+
             return trackedDownload;
         }
 
@@ -97,23 +95,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
         public List<TrackedDownload> GetActive()
         {
-            var enabledFailedDownloadHandling = _configService.EnableFailedDownloadHandling;
-            var enabledCompletedDownloadHandling = _configService.EnableCompletedDownloadHandling;
-
-            var downloading = All()
-                    .Where(v => v.State == TrackedDownloadStage.Downloading);
-
-            if (!enabledCompletedDownloadHandling)
-            {
-                downloading = downloading.Where(c => c.DownloadItem.Status != DownloadItemStatus.Completed);
-            }
-
-            if (!enabledFailedDownloadHandling)
-            {
-                downloading = downloading.Where(c => c.DownloadItem.Status != DownloadItemStatus.Failed);
-            }
-
-            return downloading.ToList();
+            return All()
+             .Where(v => v.State == TrackedDownloadStage.Downloading).ToList();
         }
 
         private static TrackedDownloadStage GetStateFromHistory(HistoryEventType eventType)

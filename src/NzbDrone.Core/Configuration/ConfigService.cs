@@ -117,7 +117,7 @@ namespace NzbDrone.Core.Configuration
 
         public Boolean EnableCompletedDownloadHandling
         {
-            get { return GetValueBoolean("EnableCompletedDownloadHandling", false); }
+            get { return GetValueBoolean("EnableCompletedDownloadHandling", true); }
 
             set { SetValue("EnableCompletedDownloadHandling", value); }
         }
@@ -127,13 +127,6 @@ namespace NzbDrone.Core.Configuration
             get { return GetValueBoolean("RemoveCompletedDownloads", false); }
 
             set { SetValue("RemoveCompletedDownloads", value); }
-        }
-
-        public Boolean EnableFailedDownloadHandling
-        {
-            get { return GetValueBoolean("EnableFailedDownloadHandling", true); }
-
-            set { SetValue("EnableFailedDownloadHandling", value); }
         }
 
         public Boolean AutoRedownloadFailed
